@@ -1,6 +1,7 @@
+# netlify.toml
 [build]
   command = ""
-  publish = "public"
+  publish = "."
   functions = "netlify/functions"
 
 [functions]

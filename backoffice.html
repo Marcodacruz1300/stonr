@@ -1,42 +1,252 @@
+<!-- backoffice.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Backoffice</title>
+  <title>Backoffice CMS</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; }
+    .row { margin-bottom: 12px; }
+    input, textarea, select, button { width: 100%; padding: 8px; }
+    .danger { background: #fef2f2; border: 1px solid #fecaca; }
+    .success { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .warn { background: #fffbeb; border: 1px solid #fde68a; }
+    .hidden { display: none; }
+    .list-item { display: flex; justify-content: space-between; gap: 8px; padding: 8px; border-bottom: 1px solid #eee; }
+    .actions button { width: auto; margin-left: 8px; }
+    #unlock { display: flex; gap: 8px; }
+  </style>
 </head>
 <body>
-  <h1>Ajouter un produit</h1>
-  <form id="productForm">
-    <input type="text" name="title" placeholder="Titre" required><br>
-    <input type="number" name="price" placeholder="Prix" required><br>
-    <textarea name="description" placeholder="Description" required></textarea><br>
-    <input type="file" name="image" accept="image/*" required><br>
-    <button type="submit">Ajouter</button>
-  </form>
+  <h1>Backoffice — Produits</h1>
+
+  <div class="card warn" id="auth">
+    <div class="row"><strong>Déverrouillage requis</strong></div>
+    <div id="unlock">
+      <input type="password" id="adminCode" placeholder="Code admin">
+      <button id="unlockBtn">Déverrouiller</button>
+    </div>
+    <div id="authMsg"></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Catalogue</h2>
+      <div id="list"></div>
+    </div>
+
+    <div class="card">
+      <h2 id="formTitle">Créer / Modifier un produit</h2>
+      <div class="row"><input type="text" id="title" placeholder="Titre"></div>
+      <div class="row"><input type="number" id="price" placeholder="Prix"></div>
+      <div class="row"><textarea id="description" placeholder="Description" rows="4"></textarea></div>
+      <div class="row">
+        <label>Image (upload nouvelle pour remplacer):</label>
+        <input type="file" id="image" accept="image/*">
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="published"> Publier</label>
+      </div>
+      <div class="row" id="currentImageRow" class="hidden"></div>
+      <div class="row">
+        <button id="saveBtn">Enregistrer</button>
+        <button id="resetBtn" type="button">Réinitialiser</button>
+        <button id="deleteBtn" class="danger" type="button">Supprimer</button>
+      </div>
+      <div id="status"></div>
+    </div>
+  </div>
 
   <script>
-    document.getElementById("productForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const file = form.image.files[0];
-      const reader = new FileReader();
-      reader.onloadend = async () => {
+    let ADMIN_CODE = null;
+    let editingSlug = null;
+    let currentImageUrl = "";
+
+    const headers = () => ({
+      "Content-Type": "application/json",
+      "x-admin-code": ADMIN_CODE || ""
+    });
+
+    const showStatus = (type, text) => {
+      const el = document.getElementById("status");
+      el.className = type === "error" ? "card danger" : (type === "success" ? "card success" : "card warn");
+      el.textContent = text;
+    };
+
+    const showAuthMsg = (type, text) => {
+      const el = document.getElementById("authMsg");
+      el.className = type === "error" ? "danger" : "success";
+      el.textContent = text;
+    };
+
+    const toBase64 = (file) => new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result.split(",")[1]);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+
+    const slugify = (s) => s.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9\-]/g, "");
+
+    const loadList = async () => {
+      document.getElementById("list").innerHTML = "Chargement…";
+      try {
+        const res = await fetch("/.netlify/functions/listProducts", { headers: headers() });
+        const data = await res.json();
+        if (!data.ok) throw new Error(`${data.error.name}: ${data.error.message}`);
+        const items = data.products;
+        document.getElementById("list").innerHTML = items.length
+          ? items.map(p => `
+              <div class="list-item">
+                <div>
+                  <strong>${p.title}</strong> — ${p.price}€
+                  <div style="font-size:12px;color:${p.published ? '#14532d' : '#7c2d12'}">
+                    ${p.published ? "Publié" : "Brouillon"}
+                  </div>
+                </div>
+                <div class="actions">
+                  <button data-slug="${p.slug}" class="editBtn">Modifier</button>
+                </div>
+              </div>
+            `).join("")
+          : "Aucun produit pour le moment.";
+        document.querySelectorAll(".editBtn").forEach(b => b.addEventListener("click", () => editProduct(b.dataset.slug)));
+      } catch (err) {
+        document.getElementById("list").innerHTML = "Erreur de chargement";
+        showStatus("error", `Liste — ${err.message}`);
+      }
+    };
+
+    const editProduct = async (slug) => {
+      try {
+        const res = await fetch(`/.netlify/functions/getProduct?slug=${encodeURIComponent(slug)}`, { headers: headers() });
+        const data = await res.json();
+        if (!data.ok) throw new Error(`${data.error.name}: ${data.error.message}`);
+        const p = data.product;
+        editingSlug = p.slug;
+        document.getElementById("formTitle").textContent = `Modifier: ${p.title}`;
+        document.getElementById("title").value = p.title || "";
+        document.getElementById("price").value = p.price || "";
+        document.getElementById("description").value = p.description || "";
+        document.getElementById("published").checked = !!p.published;
+        currentImageUrl = p.image || "";
+        document.getElementById("currentImageRow").innerHTML = currentImageUrl
+          ? `<div>Image actuelle: <img src="${currentImageUrl}" width="120"></div>`
+          : "";
+        showStatus("warn", "Produit chargé — tu peux éditer et enregistrer.");
+      } catch (err) {
+        showStatus("error", `Chargement — ${err.message}`);
+      }
+    };
+
+    const resetForm = () => {
+      editingSlug = null;
+      currentImageUrl = "";
+      document.getElementById("formTitle").textContent = "Créer / Modifier un produit";
+      document.getElementById("title").value = "";
+      document.getElementById("price").value = "";
+      document.getElementById("description").value = "";
+      document.getElementById("published").checked = false;
+      document.getElementById("image").value = "";
+      document.getElementById("currentImageRow").innerHTML = "";
+      showStatus("warn", "Formulaire réinitialisé.");
+    };
+
+    const saveProduct = async () => {
+      try {
+        const title = document.getElementById("title").value.trim();
+        const price = document.getElementById("price").value.trim();
+        const description = document.getElementById("description").value.trim();
+        const published = document.getElementById("published").checked;
+        if (!title || !price || !description) {
+          showStatus("error", "ValidationError: title, price et description sont requis");
+          return;
+        }
+
+        const file = document.getElementById("image").files[0];
+        let imageBase64 = null, imageName = null;
+        if (file) {
+          imageBase64 = await toBase64(file);
+          imageName = file.name;
+        }
+
         const payload = {
-          title: form.title.value,
-          price: form.price.value,
-          description: form.description.value,
-          imageBase64: reader.result.split(",")[1], // enlever le préfixe data:
-          imageName: file.name
+          title,
+          price,
+          description,
+          published,
+          imageBase64,
+          imageName,
+          originalSlug: editingSlug || null,
+          image: currentImageUrl // conserver l’ancienne si pas de nouvelle
         };
-        const res = await fetch("/.netlify/functions/addProduct", {
+
+        const res = await fetch("/.netlify/functions/saveProduct", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: headers(),
           body: JSON.stringify(payload)
         });
-        alert(await res.text());
-      };
-      reader.readAsDataURL(file);
+        const data = await res.json();
+        if (!data.ok) {
+          showStatus("error", `${data.error.name}: ${data.error.message}`);
+          return;
+        }
+        showStatus("success", data.message);
+        await loadList();
+        await editProduct(data.slug); // rester sur l’élément édité
+      } catch (err) {
+        showStatus("error", `SaveError: ${err.message}`);
+      }
+    };
+
+    const deleteProduct = async () => {
+      if (!editingSlug) {
+        showStatus("error", "ValidationError: aucun produit sélectionné");
+        return;
+      }
+      if (!confirm(`Supprimer définitivement: ${editingSlug} ?`)) return;
+      try {
+        const res = await fetch("/.netlify/functions/deleteProduct", {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify({ slug: editingSlug })
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          showStatus("error", `${data.error.name}: ${data.error.message}`);
+          return;
+        }
+        showStatus("success", data.message);
+        resetForm();
+        loadList();
+      } catch (err) {
+        showStatus("error", `DeleteError: ${err.message}`);
+      }
+    };
+
+    document.getElementById("unlockBtn").addEventListener("click", async () => {
+      const code = document.getElementById("adminCode").value.trim();
+      if (!code) {
+        showAuthMsg("error", "Code requis");
+        return;
+      }
+      ADMIN_CODE = code;
+      // Test simple: tenter de lister
+      try {
+        await loadList();
+        showAuthMsg("success", "Backoffice déverrouillé");
+        document.getElementById("auth").classList.add("hidden");
+      } catch (_) {
+        showAuthMsg("error", "Code invalide");
+        ADMIN_CODE = null;
+      }
     });
+
+    document.getElementById("saveBtn").addEventListener("click", saveProduct);
+    document.getElementById("resetBtn").addEventListener("click", resetForm);
+    document.getElementById("deleteBtn").addEventListener("click", deleteProduct);
   </script>
 </body>
 </html>
