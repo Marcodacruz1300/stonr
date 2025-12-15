@@ -1,6 +1,11 @@
+# netlify.toml
+
 [build]
+  # Si tu veux builder avec Next.js :
   command = "npm run build"
+  # Le dossier généré par Next.js après build
   publish = ".next"
+  # Le dossier où sont tes Netlify Functions
   functions = "netlify/functions"
 
 [functions]
