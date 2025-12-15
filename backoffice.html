@@ -8,7 +8,7 @@
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
     .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; }
     .row { margin-bottom: 12px; }
-    input, textarea, select, button { width: 100%; padding: 8px; }
+    input, textarea, button { width: 100%; padding: 8px; }
     .danger { background: #fef2f2; border: 1px solid #fecaca; }
     .success { background: #f0fdf4; border: 1px solid #bbf7d0; }
     .warn { background: #fffbeb; border: 1px solid #fde68a; }
@@ -41,13 +41,8 @@
       <div class="row"><input type="text" id="title" placeholder="Titre"></div>
       <div class="row"><input type="number" id="price" placeholder="Prix"></div>
       <div class="row"><textarea id="description" placeholder="Description" rows="4"></textarea></div>
-      <div class="row">
-        <label>Image (upload nouvelle pour remplacer):</label>
-        <input type="file" id="image" accept="image/*">
-      </div>
-      <div class="row">
-        <label><input type="checkbox" id="published"> Publier</label>
-      </div>
+      <div class="row"><input type="file" id="image" accept="image/*"></div>
+      <div class="row"><label><input type="checkbox" id="published"> Publier</label></div>
       <div class="row" id="currentImageRow"></div>
       <div class="row">
         <button id="saveBtn">Enregistrer</button>
@@ -87,13 +82,21 @@
       r.readAsDataURL(file);
     });
 
+    // Read response once, then try to parse JSON
+    const parseResponse = async (res, context) => {
+      const raw = await res.text();
+      let data;
+      try { data = JSON.parse(raw); }
+      catch { showStatus("error", `Réponse invalide (${context}): ${raw}`); return null; }
+      return data;
+    };
+
     const loadList = async () => {
       document.getElementById("list").innerHTML = "Chargement…";
       try {
         const res = await fetch("/.netlify/functions/listProducts", { headers: headers() });
-        let data;
-        try { data = await res.json(); }
-        catch { showStatus("error", `Réponse invalide (list): ${await res.text()}`); return; }
+        const data = await parseResponse(res, "list");
+        if (!data) return;
         if (!data.ok) throw new Error(`${data.error.name}: ${data.error.message}`);
         const items = data.products;
         document.getElementById("list").innerHTML = items.length
@@ -121,9 +124,8 @@
     const editProduct = async (slug) => {
       try {
         const res = await fetch(`/.netlify/functions/getProduct?slug=${encodeURIComponent(slug)}`, { headers: headers() });
-        let data;
-        try { data = await res.json(); }
-        catch { showStatus("error", `Réponse invalide (get): ${await res.text()}`); return; }
+        const data = await parseResponse(res, "get");
+        if (!data) return;
         if (!data.ok) throw new Error(`${data.error.name}: ${data.error.message}`);
         const p = data.product;
         editingSlug = p.slug;
@@ -181,7 +183,7 @@
           imageBase64,
           imageName,
           originalSlug: editingSlug || null,
-          image: currentImageUrl // conserver l’ancienne si pas de nouvelle
+          image: currentImageUrl
         };
 
         const res = await fetch("/.netlify/functions/saveProduct", {
@@ -190,14 +192,8 @@
           body: JSON.stringify(payload)
         });
 
-        let data;
-        try { data = await res.json(); }
-        catch {
-          const text = await res.text();
-          showStatus("error", `Réponse invalide (save): ${text}`);
-          return;
-        }
-
+        const data = await parseResponse(res, "save");
+        if (!data) return;
         if (!data.ok) {
           showStatus("error", `${data.error.name}: ${data.error.message}`);
           return;
@@ -222,9 +218,8 @@
           headers: headers(),
           body: JSON.stringify({ slug: editingSlug })
         });
-        let data;
-        try { data = await res.json(); }
-        catch { showStatus("error", `Réponse invalide (delete): ${await res.text()}`); return; }
+        const data = await parseResponse(res, "delete");
+        if (!data) return;
         if (!data.ok) {
           showStatus("error", `${data.error.name}: ${data.error.message}`);
           return;
@@ -244,14 +239,17 @@
         return;
       }
       ADMIN_CODE = code;
-      try {
-        await loadList();
-        showAuthMsg("success", "Backoffice déverrouillé");
-        document.getElementById("auth").classList.add("hidden");
-      } catch (_) {
-        showAuthMsg("error", "Code invalide");
+      // Test en listant pour valider le code
+      const res = await fetch("/.netlify/functions/listProducts", { headers: headers() });
+      const data = await parseResponse(res, "list");
+      if (!data || !data.ok) {
+        showAuthMsg("error", data && data.error ? `${data.error.name}: ${data.error.message}` : "Code invalide");
         ADMIN_CODE = null;
+        return;
       }
+      showAuthMsg("success", "Backoffice déverrouillé");
+      document.getElementById("auth").classList.add("hidden");
+      await loadList();
     });
 
     document.getElementById("saveBtn").addEventListener("click", saveProduct);
