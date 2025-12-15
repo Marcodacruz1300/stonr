@@ -1,13 +1,15 @@
 [build]
+  # Commande de build pour Next.js
+  command = "npm run build"
+
+  # Dossier généré par Next.js après build
+  publish = ".next"
+
   # Dossier où Netlify va chercher tes Functions
   functions = "netlify/functions"
 
-  # Dossier publié pour ton site (mets "public" si tes fichiers HTML sont dedans)
-  publish = "public"
-
-  # Commande de build (laisse vide si tu n’as pas besoin de compiler)
-  command = ""
-
 [functions]
-  # Paramètres par défaut pour toutes tes Functions
   node_bundler = "esbuild"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
