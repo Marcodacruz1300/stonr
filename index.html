@@ -74,5 +74,29 @@
   </div>
 
   <script type="module" src="app.js"></script>
+
+  <!-- Bloc ajouté pour charger les produits -->
+  <script>
+    async function loadProducts() {
+      try {
+        const res = await fetch("/.netlify/functions/listProducts");
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error.message);
+
+        const grid = document.getElementById("grid");
+        grid.innerHTML = data.products.map(p => `
+          <div class="card">
+            <img src="${p.image}" alt="${p.title}" class="card-img" />
+            <h3>${p.title}</h3>
+            <p>${p.description}</p>
+            <strong>${p.price}€</strong>
+          </div>
+        `).join("");
+      } catch (err) {
+        console.error("Erreur chargement produits:", err);
+      }
+    }
+    loadProducts();
+  </script>
 </body>
 </html>
