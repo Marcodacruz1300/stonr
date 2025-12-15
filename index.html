@@ -125,7 +125,7 @@
       document.getElementById("sheet").classList.remove("open");
     });
 
-    // Envoi commande via sendOrder.js
+    // Envoi commande via sendOrder.js (sécurité retirée)
     document.getElementById("sendOrder").addEventListener("click", async () => {
       const tg = window.Telegram.WebApp;
       const customerId = tg.initDataUnsafe?.user?.id || null;
@@ -135,11 +135,7 @@
       const address = document.getElementById("address").value.trim();
       const note = document.getElementById("note").value.trim();
 
-      if (!customerId || !name || !phone || !address || cart.length === 0) {
-        document.getElementById("sheetError").textContent = "Remplis tous les champs et ajoute au moins un produit.";
-        return;
-      }
-
+      // ⚡ On envoie même si certains champs sont vides
       const payload = {
         customer: { name, phone, address, note },
         items: cart.map(it => ({ title: it.title, qty: 1, price: it.price })),
