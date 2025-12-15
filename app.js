@@ -15,7 +15,7 @@ const GH_URLS = [
 ];
 
 // Fallback si l'app n'est pas ouverte dans Telegram (gardé au cas où, mais on passe par la Function)
-const TELEGRAM_BOT_USERNAME = 'LeStandardisteBot';
+const TELEGRAM_BOT_USERNAME = 'PriseDesCommandesBot';
 
 // ================== DOM ==================
 const GRID        = document.getElementById('grid');

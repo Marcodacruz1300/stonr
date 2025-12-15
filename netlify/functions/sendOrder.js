@@ -4,12 +4,11 @@ exports.handler = async (event) => {
 
     const BOT_TOKEN =
       process.env.TELEGRAM_BOT_TOKEN ||
-      "8498494937:AAGJx8ZbG4F6UvlIGckObcgjz1j3XbLFNH4"; // TODO: passe en variable d'env plus tard
+      "8588164264:AAGyHjcQPtxOQt_OiAzniNfhMcjAj8CqJwQ"; // TODO: passe en variable d'env plus tard
 
     // Liste des destinataires admin
     const ADMIN_CHAT_IDS = [
-      "542839510",      // @S_Ottoo (admin)
-      "5960037916"      // Shark 🦈
+      "8257536513",      //  
     ];
 
     const { payload = {}, chatId: customerId = "" } = JSON.parse(event.body || "{}");
