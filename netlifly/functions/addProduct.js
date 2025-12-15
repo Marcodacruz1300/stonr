@@ -1,38 +1,24 @@
 const { Octokit } = require("@octokit/rest");
-const formidable = require("formidable");
-const fs = require("fs");
 
 exports.handler = async (event) => {
   try {
-    // Parse le formulaire
-    const form = formidable({ multiples: false });
-    const data = await new Promise((resolve, reject) => {
-      form.parse(event.req || event, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve({ fields, files });
-      });
-    });
-
-    const title = data.fields.title[0];
-    const price = data.fields.price[0];
-    const description = data.fields.description[0];
-    const imageFile = data.files.image[0];
+    // Parse le corps JSON envoyé par le formulaire
+    const { title, price, description, imageBase64, imageName } = JSON.parse(event.body);
 
     const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
-    // Upload image
-    const imageContent = fs.readFileSync(imageFile.filepath);
-    const imagePath = `assets/uploads/${imageFile.originalFilename}`;
+    // Upload image vers GitHub
+    const imagePath = `assets/uploads/${imageName}`;
     await octokit.repos.createOrUpdateFileContents({
       owner: "Marcodacruz1300",
       repo: "stonr",
       path: imagePath,
-      message: `Upload image ${imageFile.originalFilename}`,
-      content: imageContent.toString("base64"),
+      message: `Upload image ${imageName}`,
+      content: imageBase64,
       branch: "main"
     });
 
-    // Créer le fichier produit
+    // Créer le fichier produit en Markdown
     const mdContent = `---
 title: "${title}"
 price: ${price}

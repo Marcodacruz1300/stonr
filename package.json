@@ -4,7 +4,7 @@
   "description": "Mini CMS statique avec Netlify Functions et GitHub API",
   "main": "index.js",
   "scripts": {
-    "build": ""   
+    "build": ""
   },
   "dependencies": {
     "@octokit/rest": "^20.0.0",

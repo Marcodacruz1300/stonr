@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Backoffice</title>
+</head>
+<body>
+  <h1>Ajouter un produit</h1>
+  <form id="productForm">
+    <input type="text" name="title" placeholder="Titre" required><br>
+    <input type="number" name="price" placeholder="Prix" required><br>
+    <textarea name="description" placeholder="Description" required></textarea><br>
+    <input type="file" name="image" accept="image/*" required><br>
+    <button type="submit">Ajouter</button>
+  </form>
+
+  <script>
+    document.getElementById("productForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const file = form.image.files[0];
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const payload = {
+          title: form.title.value,
+          price: form.price.value,
+          description: form.description.value,
+          imageBase64: reader.result.split(",")[1], // enlever le préfixe data:
+          imageName: file.name
+        };
+        const res = await fetch("/.netlify/functions/addProduct", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        alert(await res.text());
+      };
+      reader.readAsDataURL(file);
+    });
+  </script>
+</body>
+</html>
