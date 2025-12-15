@@ -1,10 +1,12 @@
 const { Octokit } = require("@octokit/rest");
 const matter = require("gray-matter");
 
-const OWNER = "Marcodacruz1300";   // ton compte GitHub
-const REPO = "stonr";              // ton repo
-const BRANCH = "main";             // ta branche
+const OWNER = "Marcodacruz1300";
+const REPO = "stonr";
+const BRANCH = "main";
 const PRODUCTS_DIR = "content/produits";
+const PRODUCTS_JSON = "products.json";
+const IMAGES_DIR = "content/images"; // dossier pour stocker les images
 
 exports.handler = async (event) => {
   try {
@@ -18,22 +20,35 @@ exports.handler = async (event) => {
       };
     }
 
-    // slug = nom du fichier
     const slug = originalSlug || title.toLowerCase().replace(/\s+/g, "-");
     const filePath = `${PRODUCTS_DIR}/${slug}.md`;
 
-    // contenu du fichier Markdown avec frontmatter
+    const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+
+    // --- 1) Upload de l'image si fournie ---
+    let imageUrl = image || "";
+    if (imageBase64 && imageName) {
+      const imagePath = `${IMAGES_DIR}/${Date.now()}-${imageName}`;
+      await octokit.repos.createOrUpdateFileContents({
+        owner: OWNER,
+        repo: REPO,
+        path: imagePath,
+        message: `Upload image ${imageName}`,
+        content: imageBase64, // déjà en base64 depuis le front
+        branch: BRANCH
+      });
+      imageUrl = `/${imagePath}`; // chemin relatif utilisable côté site
+    }
+
+    // --- 2) Sauvegarde du fichier produit en .md ---
     const content = matter.stringify(description, {
       title,
       price,
       description,
-      image: image || "",
+      image: imageUrl,
       published: true
     });
 
-    const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-
-    // Vérifier si le fichier existe déjà pour récupérer son sha
     let sha = null;
     try {
       const { data: file } = await octokit.repos.getContent({
@@ -44,11 +59,9 @@ exports.handler = async (event) => {
       });
       sha = file.sha;
     } catch (err) {
-      // si 404, c’est un nouveau fichier → pas de sha
       if (err.status !== 404) throw err;
     }
 
-    // Créer ou mettre à jour le fichier
     await octokit.repos.createOrUpdateFileContents({
       owner: OWNER,
       repo: REPO,
@@ -57,6 +70,44 @@ exports.handler = async (event) => {
       content: Buffer.from(content).toString("base64"),
       branch: BRANCH,
       sha: sha || undefined
+    });
+
+    // --- 3) Mise à jour du products.json ---
+    let productsSha = null;
+    let products = [];
+    try {
+      const { data: jsonFile } = await octokit.repos.getContent({
+        owner: OWNER,
+        repo: REPO,
+        path: PRODUCTS_JSON,
+        ref: BRANCH
+      });
+      productsSha = jsonFile.sha;
+      const jsonContent = Buffer.from(jsonFile.content, "base64").toString("utf8");
+      products = JSON.parse(jsonContent);
+    } catch (err) {
+      if (err.status !== 404) throw err;
+      products = [];
+    }
+
+    const productData = { slug, title, price, description, image: imageUrl };
+    const existingIndex = products.findIndex(p => p.slug === slug);
+    if (existingIndex >= 0) {
+      products[existingIndex] = productData;
+    } else {
+      products.push(productData);
+    }
+
+    const newJsonContent = JSON.stringify(products, null, 2);
+
+    await octokit.repos.createOrUpdateFileContents({
+      owner: OWNER,
+      repo: REPO,
+      path: PRODUCTS_JSON,
+      message: "Update products.json",
+      content: Buffer.from(newJsonContent).toString("base64"),
+      branch: BRANCH,
+      sha: productsSha || undefined
     });
 
     return {
