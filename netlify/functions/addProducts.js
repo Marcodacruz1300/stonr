@@ -1,39 +1,39 @@
 const { Octokit } = require("@octokit/rest");
-const multiparty = require("multiparty");
+const formidable = require("formidable");
 const fs = require("fs");
 
-exports.handler = async (event) => {
+exports.handler = async (event, context) => {
   try {
-    const form = new multiparty.Form();
+    const form = formidable({ multiples: false });
     const data = await new Promise((resolve, reject) => {
-      form.parse(event.req, (err, fields, files) => {
+      form.parse(event.req || event, (err, fields, files) => {
         if (err) reject(err);
         else resolve({ fields, files });
       });
     });
 
-    const title = fields.title[0];
-    const price = fields.price[0];
-    const description = fields.description[0];
-    const imageFile = files.image[0];
-
-    // Lire le fichier image
-    const imageContent = fs.readFileSync(imageFile.path);
+    const title = data.fields.title[0];
+    const price = data.fields.price[0];
+    const description = data.fields.description[0];
+    const imageFile = data.files.image[0];
 
     const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
-    // Upload image
+    // Lire le fichier image
+    const imageContent = fs.readFileSync(imageFile.filepath);
+
+    // Upload image dans assets/uploads/
     const imagePath = `assets/uploads/${imageFile.originalFilename}`;
     await octokit.repos.createOrUpdateFileContents({
-      owner: "TON_COMPTE",
-      repo: "TON_REPO",
+      owner: "Marcodacruz1300",
+      repo: "stonr",
       path: imagePath,
       message: `Upload image ${imageFile.originalFilename}`,
       content: imageContent.toString("base64"),
       branch: "main"
     });
 
-    // Créer le fichier produit
+    // Créer le fichier produit dans content/produits/
     const mdContent = `---
 title: "${title}"
 price: ${price}
@@ -45,8 +45,8 @@ published: true
 
     const productPath = `content/produits/${title.replace(/\s+/g, "-").toLowerCase()}.md`;
     await octokit.repos.createOrUpdateFileContents({
-      owner: "TON_COMPTE",
-      repo: "TON_REPO",
+      owner: "Marcodacruz1300",
+      repo: "stonr",
       path: productPath,
       message: `Ajout produit ${title}`,
       content: Buffer.from(mdContent).toString("base64"),

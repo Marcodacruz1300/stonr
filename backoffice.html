@@ -13,6 +13,7 @@
   </style>
 </head>
 <body>
+  <!-- Écran de login -->
   <div id="login">
     <h2>Accès Backoffice</h2>
     <input type="password" id="code" placeholder="Code secret">
@@ -20,19 +21,21 @@
     <p id="error" style="color:red;"></p>
   </div>
 
+  <!-- Formulaire CMS -->
   <div id="cms">
     <h2>Ajouter un produit</h2>
-    <form id="productForm">
-      <input type="text" id="title" placeholder="Titre" required><br>
-      <input type="number" id="price" placeholder="Prix (€)" step="0.01" required><br>
-      <textarea id="description" placeholder="Description"></textarea><br>
-      <input type="file" id="image" accept="image/*" required><br>
+    <form id="productForm" enctype="multipart/form-data">
+      <input type="text" name="title" id="title" placeholder="Titre" required><br>
+      <input type="number" name="price" id="price" placeholder="Prix (€)" step="0.01" required><br>
+      <textarea name="description" id="description" placeholder="Description"></textarea><br>
+      <input type="file" name="image" id="image" accept="image/*" required><br>
       <button type="submit">Publier</button>
       <p id="msg"></p>
     </form>
   </div>
 
   <script>
+    // Vérification du code secret
     function checkCode() {
       const input = document.getElementById("code").value.trim();
       if (input === "BOT2026") {
@@ -43,15 +46,11 @@
       }
     }
 
+    // Soumission du formulaire
     document.getElementById("productForm").addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const file = document.getElementById("image").files[0];
-      const formData = new FormData();
-      formData.append("title", document.getElementById("title").value);
-      formData.append("price", document.getElementById("price").value);
-      formData.append("description", document.getElementById("description").value);
-      formData.append("image", file);
+      const formData = new FormData(document.getElementById("productForm"));
 
       try {
         const res = await fetch("/.netlify/functions/addProduct", {

@@ -3,12 +3,8 @@
   "version": "1.0.0",
   "description": "Mini CMS avec Netlify Functions et GitHub API",
   "main": "index.js",
-  "scripts": {
-    "build": "echo 'Build step pas nécessaire'",
-    "start": "echo 'Pas de serveur local'"
-  },
   "dependencies": {
     "@octokit/rest": "^20.0.0",
-    "multiparty": "^4.2.2"
+    "formidable": "^3.5.1"
   }
 }
