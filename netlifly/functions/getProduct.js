@@ -1,4 +1,3 @@
-// netlify/functions/getProduct.js
 const { Octokit } = require("@octokit/rest");
 
 const OWNER = "Marcodacruz1300";
@@ -55,7 +54,7 @@ exports.handler = async (event) => {
     };
   } catch (err) {
     return {
-      statusCode: err.name === "AuthError" ? 401 : (err.status === 404 ? 404 : 500),
+      statusCode: err.name === "AuthError" ? 401 : (err.name === "ValidationError" ? 400 : (err.status === 404 ? 404 : 500)),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ok: false, error: { name: err.name || "Error", message: err.message } })
     };

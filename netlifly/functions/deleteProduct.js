@@ -1,4 +1,3 @@
-// netlify/functions/deleteProduct.js
 const { Octokit } = require("@octokit/rest");
 
 const OWNER = "Marcodacruz1300";
@@ -27,10 +26,10 @@ exports.handler = async (event) => {
     const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
     const path = `${PRODUCTS_DIR}/${slug}.md`;
 
-    const { data: file } = await octokit.repos.getContent({ owner: "Marcodacruz1300", repo: "stonr", path });
+    const { data: file } = await octokit.repos.getContent({ owner: OWNER, repo: REPO, path });
     await octokit.repos.deleteFile({
-      owner: "Marcodacruz1300",
-      repo: "stonr",
+      owner: OWNER,
+      repo: REPO,
       path,
       message: `Delete product ${slug}`,
       sha: file.sha,

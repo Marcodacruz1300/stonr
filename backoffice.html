@@ -1,4 +1,3 @@
-<!-- backoffice.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -49,7 +48,7 @@
       <div class="row">
         <label><input type="checkbox" id="published"> Publier</label>
       </div>
-      <div class="row" id="currentImageRow" class="hidden"></div>
+      <div class="row" id="currentImageRow"></div>
       <div class="row">
         <button id="saveBtn">Enregistrer</button>
         <button id="resetBtn" type="button">Réinitialiser</button>
@@ -88,13 +87,13 @@
       r.readAsDataURL(file);
     });
 
-    const slugify = (s) => s.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9\-]/g, "");
-
     const loadList = async () => {
       document.getElementById("list").innerHTML = "Chargement…";
       try {
         const res = await fetch("/.netlify/functions/listProducts", { headers: headers() });
-        const data = await res.json();
+        let data;
+        try { data = await res.json(); }
+        catch { showStatus("error", `Réponse invalide (list): ${await res.text()}`); return; }
         if (!data.ok) throw new Error(`${data.error.name}: ${data.error.message}`);
         const items = data.products;
         document.getElementById("list").innerHTML = items.length
@@ -122,7 +121,9 @@
     const editProduct = async (slug) => {
       try {
         const res = await fetch(`/.netlify/functions/getProduct?slug=${encodeURIComponent(slug)}`, { headers: headers() });
-        const data = await res.json();
+        let data;
+        try { data = await res.json(); }
+        catch { showStatus("error", `Réponse invalide (get): ${await res.text()}`); return; }
         if (!data.ok) throw new Error(`${data.error.name}: ${data.error.message}`);
         const p = data.product;
         editingSlug = p.slug;
@@ -188,14 +189,22 @@
           headers: headers(),
           body: JSON.stringify(payload)
         });
-        const data = await res.json();
+
+        let data;
+        try { data = await res.json(); }
+        catch {
+          const text = await res.text();
+          showStatus("error", `Réponse invalide (save): ${text}`);
+          return;
+        }
+
         if (!data.ok) {
           showStatus("error", `${data.error.name}: ${data.error.message}`);
           return;
         }
         showStatus("success", data.message);
         await loadList();
-        await editProduct(data.slug); // rester sur l’élément édité
+        await editProduct(data.slug);
       } catch (err) {
         showStatus("error", `SaveError: ${err.message}`);
       }
@@ -213,7 +222,9 @@
           headers: headers(),
           body: JSON.stringify({ slug: editingSlug })
         });
-        const data = await res.json();
+        let data;
+        try { data = await res.json(); }
+        catch { showStatus("error", `Réponse invalide (delete): ${await res.text()}`); return; }
         if (!data.ok) {
           showStatus("error", `${data.error.name}: ${data.error.message}`);
           return;
@@ -233,7 +244,6 @@
         return;
       }
       ADMIN_CODE = code;
-      // Test simple: tenter de lister
       try {
         await loadList();
         showAuthMsg("success", "Backoffice déverrouillé");

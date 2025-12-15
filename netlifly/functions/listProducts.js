@@ -1,4 +1,3 @@
-// netlify/functions/listProducts.js
 const { Octokit } = require("@octokit/rest");
 
 const OWNER = "Marcodacruz1300";
@@ -15,7 +14,6 @@ const requireAdmin = (headers) => {
 };
 
 const parseFrontMatter = (text) => {
-  // Extrait le frontmatter YAML simple
   const match = text.match(/^---\n([\s\S]*?)\n---\n/);
   if (!match) return {};
   const yaml = match[1];
@@ -25,7 +23,6 @@ const parseFrontMatter = (text) => {
     if (!kv) return;
     const key = kv[1];
     let val = kv[2];
-    // Nettoyage guillemets
     if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
     if (key === "price") obj[key] = Number(val);
     else if (key === "published") obj[key] = val === "true";
@@ -36,10 +33,10 @@ const parseFrontMatter = (text) => {
 
 exports.handler = async (event) => {
   try {
-    requireAdmin(event.headers);
+    const adminOnly = !!event.headers["x-admin-code"];
+    if (adminOnly) requireAdmin(event.headers);
 
     const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-    // Liste des fichiers dans content/produits
     const { data: items } = await octokit.repos.getContent({
       owner: OWNER,
       repo: REPO,

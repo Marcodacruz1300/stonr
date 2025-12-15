@@ -1,4 +1,3 @@
-// netlify/functions/saveProduct.js
 const { Octokit } = require("@octokit/rest");
 
 const OWNER = "Marcodacruz1300";
@@ -41,7 +40,7 @@ exports.handler = async (event) => {
     const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
     // Upload image if provided
-    let imagePath;
+    let imagePath = body.image || "";
     if (imageBase64 && imageName) {
       imagePath = `${IMAGES_DIR}/${imageName}`;
       await octokit.repos.createOrUpdateFileContents({
@@ -52,6 +51,7 @@ exports.handler = async (event) => {
         content: imageBase64,
         branch: "main"
       });
+      imagePath = `/${imagePath}`;
     }
 
     const slug = title.replace(/\s+/g, "-").toLowerCase();
@@ -70,16 +70,14 @@ exports.handler = async (event) => {
           sha: oldFile.sha,
           branch: "main"
         });
-      } catch (_) {
-        // ignore if not found
-      }
+      } catch (_) { /* ignore if not found */ }
     }
 
     const frontmatter = toFrontMatter({
       title,
       price,
       description,
-      image: imagePath ? `/${imagePath}` : (body.image || ""), // keep existing image if editing
+      image: imagePath,
       published: !!published
     });
 
