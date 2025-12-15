@@ -1,11 +1,6 @@
-const { Octokit } = require("@octokit/rest");
-
 exports.handler = async (event) => {
   try {
     const body = JSON.parse(event.body);
-
-    // Ton token GitHub (mettre en variable d'environnement sur Netlify)
-    const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
     const content = `---
 title: "${body.title}"
@@ -14,19 +9,26 @@ description: "${body.description}"
 image: "${body.image}"
 published: true
 ---
-
 `;
 
     const path = `content/produits/${body.title.replace(/\s+/g, "-").toLowerCase()}.md`;
 
-    await octokit.repos.createOrUpdateFileContents({
-      owner: "TON_COMPTE",
-      repo: "TON_REPO",
-      path,
-      message: `Ajout produit ${body.title}`,
-      content: Buffer.from(content).toString("base64"),
-      branch: "main"
+    const res = await fetch(`https://api.github.com/repos/TON_COMPTE/TON_REPO/contents/${path}`, {
+      method: "PUT",
+      headers: {
+        "Authorization": `token ${process.env.GITHUB_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: `Ajout produit ${body.title}`,
+        content: Buffer.from(content).toString("base64"),
+        branch: "main"
+      })
     });
+
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
 
     return {
       statusCode: 200,
