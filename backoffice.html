@@ -14,36 +14,32 @@
     .warn { background: #fffbeb; border: 1px solid #fde68a; }
     .list-item { display: flex; justify-content: space-between; gap: 8px; padding: 8px; border-bottom: 1px solid #eee; }
     .actions button { margin-left: 8px; }
-    #unlock { display: flex; gap: 8px; }
   </style>
 </head>
 <body>
   <h1>Backoffice — Produits</h1>
 
+  <!-- Déverrouillage simple -->
   <div class="card warn" id="auth">
     <div class="row"><strong>Déverrouillage requis</strong></div>
-    <div id="unlock">
-      <input type="password" id="adminCode" placeholder="Code admin">
-      <button id="unlockBtn" type="button">Déverrouiller</button>
-    </div>
+    <button id="unlockBtn" type="button">Déverrouiller</button>
     <div id="authMsg"></div>
   </div>
 
   <div class="grid">
+    <!-- Catalogue -->
     <div class="card">
       <h2>Catalogue</h2>
       <div id="list"></div>
     </div>
 
+    <!-- Formulaire -->
     <div class="card">
       <h2 id="formTitle">Créer / Modifier un produit</h2>
       <div class="row"><input type="text" id="title" placeholder="Titre"></div>
       <div class="row"><input type="number" id="price" placeholder="Prix"></div>
       <div class="row"><textarea id="description" placeholder="Description" rows="4"></textarea></div>
       <div class="row"><input type="file" id="image" accept="image/*"></div>
-      <div class="row">
-        <button id="publishBtn" type="button" class="warn">Brouillon</button>
-      </div>
       <div class="row" id="currentImageRow"></div>
       <div class="row">
         <button id="saveBtn" type="button">Enregistrer</button>
@@ -55,13 +51,9 @@
   </div>
 
   <script>
-    // Etat
-    let ADMIN_CODE = null;
     let editingSlug = null;
     let currentImageUrl = "";
-    let isPublished = false;
 
-    // Helpers
     const get = (id) => document.getElementById(id);
     const showStatus = (type, text) => {
       const el = get("status");
@@ -69,16 +61,6 @@
       el.className = type === "error" ? "card danger" : (type === "success" ? "card success" : "card warn");
       el.textContent = text;
     };
-    const showAuthMsg = (type, text) => {
-      const el = get("authMsg");
-      if (!el) return;
-      el.className = type === "error" ? "danger" : "success";
-      el.textContent = text;
-    };
-    const headers = () => ({
-      "Content-Type": "application/json",
-      "x-admin-code": ADMIN_CODE || ""
-    });
     const toBase64 = (file) => new Promise((resolve, reject) => {
       const r = new FileReader();
       r.onload = () => resolve(r.result.split(",")[1]);
@@ -93,35 +75,21 @@
       return data;
     };
 
-    // Toggle publication
-    const publishBtn = get("publishBtn");
-    if (publishBtn) {
-      publishBtn.addEventListener("click", () => {
-        isPublished = !isPublished;
-        publishBtn.textContent = isPublished ? "Publié" : "Brouillon";
-        publishBtn.className = isPublished ? "success" : "warn";
-      });
-    }
-
-    // Liste
+    // Charger la liste
     const loadList = async () => {
       const listEl = get("list");
-      if (!listEl) return;
       listEl.innerHTML = "Chargement…";
       try {
-        const res = await fetch("/.netlify/functions/listProducts", { headers: headers() });
+        const res = await fetch("/.netlify/functions/listProducts");
         const data = await parseResponse(res, "list");
         if (!data) return;
         if (!data.ok) throw new Error(`${data.error.name}: ${data.error.message}`);
-        const items = Array.isArray(data.products) ? data.products : [];
+        const items = data.products || [];
         listEl.innerHTML = items.length
           ? items.map(p => `
               <div class="list-item">
                 <div>
                   <strong>${p.title}</strong> — ${p.price}€
-                  <div style="font-size:12px;color:${p.published ? '#14532d' : '#7c2d12'}">
-                    ${p.published ? "Publié" : "Brouillon"}
-                  </div>
                 </div>
                 <div class="actions">
                   <button data-slug="${p.slug}" class="editBtn" type="button">Modifier</button>
@@ -136,53 +104,41 @@
       }
     };
 
-    // Edit
+    // Editer un produit
     const editProduct = async (slug) => {
       try {
-        const res = await fetch(`/.netlify/functions/getProduct?slug=${encodeURIComponent(slug)}`, { headers: headers() });
+        const res = await fetch(`/.netlify/functions/getProduct?slug=${encodeURIComponent(slug)}`);
         const data = await parseResponse(res, "get");
         if (!data) return;
         if (!data.ok) throw new Error(`${data.error.name}: ${data.error.message}`);
         const p = data.product || {};
         editingSlug = p.slug || slug;
-
         get("formTitle").textContent = `Modifier: ${p.title || slug}`;
         get("title").value = p.title || "";
         get("price").value = p.price ?? "";
         get("description").value = p.description || "";
         currentImageUrl = p.image || "";
         get("currentImageRow").innerHTML = currentImageUrl ? `<div>Image actuelle: <img src="${currentImageUrl}" width="120"></div>` : "";
-
-        isPublished = !!p.published;
-        if (publishBtn) {
-          publishBtn.textContent = isPublished ? "Publié" : "Brouillon";
-          publishBtn.className = isPublished ? "success" : "warn";
-        }
         showStatus("warn", "Produit chargé — tu peux éditer et enregistrer.");
       } catch (err) {
         showStatus("error", `Chargement — ${err.message}`);
       }
     };
 
-    // Reset
+    // Réinitialiser
     const resetForm = () => {
       editingSlug = null;
       currentImageUrl = "";
-      isPublished = false;
       get("formTitle").textContent = "Créer / Modifier un produit";
       get("title").value = "";
       get("price").value = "";
       get("description").value = "";
       const imgInput = get("image"); if (imgInput) imgInput.value = "";
       get("currentImageRow").innerHTML = "";
-      if (publishBtn) {
-        publishBtn.textContent = "Brouillon";
-        publishBtn.className = "warn";
-      }
       showStatus("warn", "Formulaire réinitialisé.");
     };
 
-    // Save
+    // Sauvegarder (publication directe)
     const saveProduct = async () => {
       try {
         const title = (get("title").value || "").trim();
@@ -205,7 +161,7 @@
           title,
           price,
           description,
-          published: isPublished,
+          published: true, // toujours publié
           imageBase64,
           imageName,
           originalSlug: editingSlug || null,
@@ -214,7 +170,7 @@
 
         const res = await fetch("/.netlify/functions/saveProduct", {
           method: "POST",
-          headers: headers(),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
@@ -232,7 +188,7 @@
       }
     };
 
-    // Delete
+    // Supprimer
     const deleteProduct = async () => {
       if (!editingSlug) {
         showStatus("error", "ValidationError: aucun produit sélectionné");
@@ -242,7 +198,7 @@
       try {
         const res = await fetch("/.netlify/functions/deleteProduct", {
           method: "POST",
-          headers: headers(),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ slug: editingSlug })
         });
         const data = await parseResponse(res, "delete");
@@ -259,31 +215,17 @@
       }
     };
 
-    // Unlock
-    const unlockBtn = get("unlockBtn");
-    if (unlockBtn) {
-      unlockBtn.addEventListener("click", async () => {
-        const code = (get("adminCode").value || "").trim();
-        if (!code) { showAuthMsg("error", "Code requis"); return; }
-        ADMIN_CODE = code;
+    // Déverrouiller (simple: masque la carte et charge)
+    get("unlockBtn").addEventListener("click", async () => {
+      const auth = get("auth");
+      if (auth) auth.classList.add("hidden");
+      await loadList();
+    });
 
-        const res = await fetch("/.netlify/functions/listProducts", { headers: headers() });
-        const data = await parseResponse(res, "list");
-        if (!data || !data.ok) {
-          showAuthMsg("error", data && data.error ? `${data.error.name}: ${data.error.message}` : "Code invalide ou Functions indisponibles");
-          ADMIN_CODE = null;
-          return;
-        }
-        showAuthMsg("success", "Backoffice déverrouillé");
-        const authCard = get("auth"); if (authCard) authCard.classList.add("hidden");
-        await loadList();
-      });
-    }
-
-    // Bind
-    const saveBtn = get("saveBtn"); if (saveBtn) saveBtn.addEventListener("click", saveProduct);
-    const resetBtn = get("resetBtn"); if (resetBtn) resetBtn.addEventListener("click", resetForm);
-    const deleteBtn = get("deleteBtn"); if (deleteBtn) deleteBtn.addEventListener("click", deleteProduct);
+    // Bind des boutons
+    get("saveBtn").addEventListener("click", saveProduct);
+    get("resetBtn").addEventListener("click", resetForm);
+    get("deleteBtn").addEventListener("click", deleteProduct);
   </script>
 </body>
 </html>
