@@ -61,7 +61,7 @@ exports.handler = async (event) => {
     if (originalSlug && originalSlug !== slug) {
       const oldPath = `${PRODUCTS_DIR}/${originalSlug}.md`;
       try {
-        const { data: oldFile } = await octokit.repos.getContent({ owner: OWNER, repo: REPO, path: oldPath });
+        const { data: oldFile } = await octokit.repos.getContent({ owner: OWNER, repo: REPO, path: oldPath, ref: "main" });
         await octokit.repos.deleteFile({
           owner: OWNER,
           repo: REPO,
@@ -86,13 +86,21 @@ exports.handler = async (event) => {
     const contentBase64 = Buffer.from(frontmatter).toString("base64");
 
     // Get SHA if file exists
-    let sha;
+    let sha = null;
     try {
-      const { data: existing } = await octokit.repos.getContent({ owner: OWNER, repo: REPO, path: mdPath });
+      const { data: existing } = await octokit.repos.getContent({
+        owner: OWNER,
+        repo: REPO,
+        path: mdPath,
+        ref: "main"
+      });
       sha = existing.sha;
     } catch (err) {
-      if (err.status !== 404) throw err; // ignore si le fichier n'existe pas
+      if (err.status !== 404) throw err;
+      sha = null; // fichier inexistant → création
     }
+
+    console.log("saveProduct → path:", mdPath, "sha:", sha);
 
     await octokit.repos.createOrUpdateFileContents({
       owner: OWNER,
@@ -114,6 +122,7 @@ exports.handler = async (event) => {
       })
     };
   } catch (err) {
+    console.error("saveProduct error:", err);
     return {
       statusCode: err.name === "AuthError" ? 401 : (err.name === "ValidationError" ? 400 : 500),
       headers: { "Content-Type": "application/json" },
