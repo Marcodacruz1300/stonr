@@ -75,8 +75,10 @@
 
   <script type="module" src="app.js"></script>
 
-  <!-- Bloc ajouté pour charger les produits -->
+  <!-- Bloc ajouté pour charger les produits et gérer le panier -->
   <script>
+    const cart = [];
+
     async function loadProducts() {
       try {
         const res = await fetch("/.netlify/functions/listProducts");
@@ -90,12 +92,49 @@
             <h3>${p.title}</h3>
             <p>${p.description}</p>
             <strong>${p.price}€</strong>
+            <button class="btn-add" data-slug="${p.slug}" data-title="${p.title}" data-price="${p.price}">
+              Ajouter au panier
+            </button>
           </div>
         `).join("");
+
+        // brancher les boutons
+        document.querySelectorAll(".btn-add").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const slug = btn.dataset.slug;
+            const title = btn.dataset.title;
+            const price = parseFloat(btn.dataset.price);
+
+            cart.push({ slug, title, price });
+            updateCart();
+          });
+        });
       } catch (err) {
         console.error("Erreur chargement produits:", err);
       }
     }
+
+    function updateCart() {
+      const total = cart.reduce((sum, item) => sum + item.price, 0);
+      const btn = document.getElementById("checkoutBtn");
+      btn.textContent = `Envoyer la commande — ${total.toFixed(2)}€`;
+      btn.disabled = cart.length === 0;
+
+      // mettre à jour le total dans la sheet
+      const sheetTotal = document.getElementById("sheetTotal");
+      sheetTotal.textContent = `Total : ${total.toFixed(2)}€`;
+    }
+
+    // ouvrir la sheet checkout quand on clique sur le bouton panier
+    document.getElementById("checkoutBtn").addEventListener("click", () => {
+      document.getElementById("sheet").setAttribute("aria-hidden", "false");
+    });
+
+    // fermer la sheet
+    document.getElementById("sheetClose").addEventListener("click", () => {
+      document.getElementById("sheet").setAttribute("aria-hidden", "true");
+    });
+
     loadProducts();
   </script>
 </body>
