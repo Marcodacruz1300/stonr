@@ -33,20 +33,22 @@ const parseFrontMatter = (text) => {
 
 exports.handler = async (event) => {
   try {
-    const adminOnly = !!event.headers["x-admin-code"];
-    if (adminOnly) requireAdmin(event.headers);
+    requireAdmin(event.headers);
 
     const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-    const { data: items } = await octokit.repos.getContent({
-      owner: OWNER,
-      repo: REPO,
-      path: PRODUCTS_DIR
-    }).catch((e) => {
-      if (e.status === 404) return { data: [] };
-      throw e;
-    });
+    let items = [];
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner: OWNER,
+        repo: REPO,
+        path: PRODUCTS_DIR
+      });
+      items = Array.isArray(data) ? data : [];
+    } catch (e) {
+      if (e.status !== 404) throw e;
+    }
 
-    const files = Array.isArray(items) ? items.filter(i => i.type === "file" && i.name.endsWith(".md")) : [];
+    const files = items.filter(i => i.type === "file" && i.name.endsWith(".md"));
     const products = [];
     for (const f of files) {
       const file = await octokit.repos.getContent({

@@ -57,7 +57,7 @@ exports.handler = async (event) => {
     const slug = title.replace(/\s+/g, "-").toLowerCase();
     const mdPath = `${PRODUCTS_DIR}/${slug}.md`;
 
-    // If renaming (originalSlug provided and different), delete old file
+    // If renaming
     if (originalSlug && originalSlug !== slug) {
       const oldPath = `${PRODUCTS_DIR}/${originalSlug}.md`;
       try {
@@ -70,7 +70,7 @@ exports.handler = async (event) => {
           sha: oldFile.sha,
           branch: "main"
         });
-      } catch (_) { /* ignore if not found */ }
+      } catch (_) {}
     }
 
     const frontmatter = toFrontMatter({
@@ -83,7 +83,7 @@ exports.handler = async (event) => {
 
     const contentBase64 = Buffer.from(frontmatter).toString("base64");
 
-    // Upsert product file
+    // Get SHA if file exists
     let sha;
     try {
       const { data: existing } = await octokit.repos.getContent({ owner: OWNER, repo: REPO, path: mdPath });
