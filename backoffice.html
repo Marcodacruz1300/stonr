@@ -14,15 +14,19 @@
     .warn { background: #fffbeb; border: 1px solid #fde68a; }
     .list-item { display: flex; justify-content: space-between; gap: 8px; padding: 8px; border-bottom: 1px solid #eee; }
     .actions button { margin-left: 8px; }
+    .hidden { display:none; }
   </style>
 </head>
 <body>
   <h1>Backoffice — Produits</h1>
 
-  <!-- Déverrouillage simple -->
+  <!-- Déverrouillage par code local -->
   <div class="card warn" id="auth">
     <div class="row"><strong>Déverrouillage requis</strong></div>
-    <button id="unlockBtn" type="button">Déverrouiller</button>
+    <div class="row" style="display:flex;gap:8px;">
+      <input type="password" id="unlockCode" placeholder="Code (BOT2026)">
+      <button id="unlockBtn" type="button">Déverrouiller</button>
+    </div>
     <div id="authMsg"></div>
   </div>
 
@@ -61,6 +65,12 @@
       el.className = type === "error" ? "card danger" : (type === "success" ? "card success" : "card warn");
       el.textContent = text;
     };
+    const showAuthMsg = (type, text) => {
+      const el = get("authMsg");
+      if (!el) return;
+      el.className = type === "error" ? "danger" : "success";
+      el.textContent = text;
+    };
     const toBase64 = (file) => new Promise((resolve, reject) => {
       const r = new FileReader();
       r.onload = () => resolve(r.result.split(",")[1]);
@@ -74,6 +84,18 @@
       catch { showStatus("error", `Réponse invalide (${context}): ${raw}`); return null; }
       return data;
     };
+
+    // Déverrouiller: code local BOT2026, aucune requête d’auth
+    get("unlockBtn").addEventListener("click", async () => {
+      const code = (get("unlockCode").value || "").trim();
+      if (code !== "BOT2026") {
+        showAuthMsg("error", "Code incorrect. Essaie BOT2026.");
+        return;
+      }
+      showAuthMsg("success", "Backoffice déverrouillé.");
+      get("auth").classList.add("hidden");
+      await loadList();
+    });
 
     // Charger la liste
     const loadList = async () => {
@@ -215,14 +237,8 @@
       }
     };
 
-    // Déverrouiller (simple: masque la carte et charge)
-    get("unlockBtn").addEventListener("click", async () => {
-      const auth = get("auth");
-      if (auth) auth.classList.add("hidden");
-      await loadList();
-    });
-
     // Bind des boutons
+    get("unlockBtn").addEventListener("click", async () => {});
     get("saveBtn").addEventListener("click", saveProduct);
     get("resetBtn").addEventListener("click", resetForm);
     get("deleteBtn").addEventListener("click", deleteProduct);
