@@ -8,75 +8,49 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    .grid {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      padding: 16px;
-    }
-    .card {
-      display: flex;
-      align-items: center;
-      background: #1c1c1c;
-      border-radius: 12px;
-      padding: 12px;
-      gap: 12px;
-    }
     .card-img {
-      width: 64px;
-      height: 64px;
+      width: 80px;
+      height: 80px;
       object-fit: cover;
       border-radius: 8px;
-    }
-    .card-content {
-      flex: 1;
-    }
-    .card-title {
-      font-size: 16px;
-      font-weight: bold;
-      margin: 0;
-      color: #fff;
-    }
-    .card-price {
-      font-size: 14px;
-      color: #ccc;
-    }
-    .btn-add {
-      background: #2e8b57;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    .fab {
-      position: fixed;
-      bottom: 16px;
-      left: 16px;
-      right: 16px;
-      background: orange;
-      color: black;
-      font-weight: bold;
-      border: none;
-      padding: 16px;
-      border-radius: 12px;
-      font-size: 16px;
-      cursor: pointer;
     }
   </style>
 </head>
 <body>
+  <!-- BACKGROUND -->
+  <div class="bg"></div>
+  <div class="scrim"></div>
+
+  <!-- Header centré -->
+  <header class="header">
+    <img class="hero-logo" src="assets/logo.png" alt="logo" />
+    <h1 class="hero-title">Menu</h1>
+  </header>
+
+  <!-- Filtres -->
+  <section class="filters">
+    <button class="chip" id="chipCategory">
+      <span id="labelCategory">Toutes les catégories</span><span class="chev">▾</span>
+    </button>
+    <button class="chip" id="chipFarm">
+      <span id="labelFarm">Toutes les farms</span><span class="chev">▾</span>
+    </button>
+  </section>
+
+  <!-- Grille produits -->
   <main class="grid" id="grid" aria-live="polite"></main>
+
+  <!-- Bouton panier / checkout -->
   <button id="checkoutBtn" class="fab" disabled>Envoyer la commande — 0,00€</button>
 
+  <!-- Sheet checkout -->
   <div id="sheet" class="sheet" aria-hidden="true">
     <div class="sheet-card">
       <header class="sheet-head">
         <h3>Finaliser la commande</h3>
         <button id="sheetClose" class="x">✕</button>
       </header>
-      <div class="sheet-body" id="sheetBody">
+      <div class="sheet-body">
         <h4>Produits sélectionnés :</h4>
         <ul id="cartList"></ul>
 
@@ -88,9 +62,6 @@
         </label>
         <label>Adresse complète
           <textarea id="address" rows="3" placeholder="N°, rue, code postal, ville"></textarea>
-        </label>
-        <label>Note (optionnel)
-          <textarea id="note" rows="2" placeholder="Digicode, étage..."></textarea>
         </label>
         <div id="sheetError" class="error" role="alert" aria-live="polite"></div>
       </div>
@@ -105,38 +76,34 @@
     const cart = [];
 
     async function loadProducts() {
-      try {
-        const res = await fetch("/.netlify/functions/listProducts");
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.error.message);
+      const res = await fetch("/.netlify/functions/listProducts");
+      const data = await res.json();
+      if (!data.ok) return;
 
-        const grid = document.getElementById("grid");
-        grid.innerHTML = data.products.map(p => `
-          <div class="card">
-            <img src="${p.image}" alt="${p.title}" class="card-img" />
-            <div class="card-content">
-              <p class="card-title">${p.title}</p>
-              <p class="card-price">${p.price}€</p>
-            </div>
-            <button class="btn-add" data-slug="${p.slug}" data-title="${p.title}" data-price="${p.price}">
-              Ajouter
-            </button>
+      const grid = document.getElementById("grid");
+      grid.innerHTML = data.products.map(p => `
+        <div class="card">
+          <img src="${p.image}" alt="${p.title}" class="card-img" />
+          <div class="card-content">
+            <h3>${p.title}</h3>
+            <p>${p.description}</p>
+            <strong>${p.price}€</strong>
           </div>
-        `).join("");
+          <button class="btn-add" data-slug="${p.slug}" data-title="${p.title}" data-price="${p.price}">
+            Ajouter
+          </button>
+        </div>
+      `).join("");
 
-        document.querySelectorAll(".btn-add").forEach(btn => {
-          btn.addEventListener("click", () => {
-            const slug = btn.dataset.slug;
-            const title = btn.dataset.title;
-            const price = parseFloat(btn.dataset.price);
-
-            cart.push({ slug, title, price });
-            updateCart();
-          });
+      document.querySelectorAll(".btn-add").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const slug = btn.dataset.slug;
+          const title = btn.dataset.title;
+          const price = parseFloat(btn.dataset.price);
+          cart.push({ slug, title, price });
+          updateCart();
         });
-      } catch (err) {
-        console.error("Erreur chargement produits:", err);
-      }
+      });
     }
 
     function updateCart() {
@@ -159,14 +126,17 @@
 
     document.getElementById("sendOrder").addEventListener("click", async () => {
       const tg = window.Telegram.WebApp;
-      const order = {
-        id: tg.initDataUnsafe?.user?.id || null,
-        name: document.getElementById("name").value,
-        phone: document.getElementById("phone").value,
-        address: document.getElementById("address").value,
-        note: document.getElementById("note").value,
-        cart
-      };
+      const id = tg.initDataUnsafe?.user?.id || null;
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const address = document.getElementById("address").value.trim();
+
+      if (!id || !name || !phone || !address || cart.length === 0) {
+        document.getElementById("sheetError").textContent = "Remplis tous les champs et ajoute au moins un produit.";
+        return;
+      }
+
+      const order = { id, name, phone, address, cart };
 
       try {
         const res = await fetch("/.netlify/functions/sendOrder", {
@@ -177,9 +147,9 @@
         const data = await res.json();
         if (data.ok) {
           alert("Commande envoyée !");
-          document.getElementById("sheet").setAttribute("aria-hidden", "true");
           cart.length = 0;
           updateCart();
+          document.getElementById("sheet").setAttribute("aria-hidden", "true");
         } else {
           document.getElementById("sheetError").textContent = "Erreur: " + data.error.message;
         }
