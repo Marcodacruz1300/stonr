@@ -7,12 +7,56 @@
   <meta name="theme-color" content="#0b0d10" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- Fix image cropping + layering so the button is clickable -->
   <style>
+    /* Keep BG and scrim behind everything and non-interactive */
+    .bg, .scrim {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Ensure main content is above scrim */
+    .header, .filters, .grid, .lightbox, .sheet {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Make product images true squares and well-cropped */
     .card-img {
-      width: 80px;
-      height: 80px;
-      object-fit: cover;
+      width: 80px;         /* adjust to 64/72/96px if you prefer */
+      aspect-ratio: 1 / 1; /* guarantees a square */
+      object-fit: cover;   /* fills the square without distortion */
       border-radius: 8px;
+      display: block;
+    }
+
+    /* Ensure the orange FAB is always clickable above UI */
+    .fab {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      z-index: 1000;       /* above everything */
+    }
+
+    /* Optional: make each product row align nicely */
+    .card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .card-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .card-content h3 {
+      margin: 0 0 4px;
+    }
+    .card-content p {
+      margin: 0 0 6px;
     }
   </style>
 </head>
@@ -43,6 +87,15 @@
   <!-- Bouton panier / checkout -->
   <button id="checkoutBtn" class="fab" disabled>Envoyer la commande — 0,00€</button>
 
+  <!-- Lightbox galerie -->
+  <div id="lightbox" class="lightbox" aria-hidden="true">
+    <button class="lb-close" id="lbClose" aria-label="Fermer">✕</button>
+    <button class="lb-prev" id="lbPrev" aria-label="Précédent">‹</button>
+    <button class="lb-next" id="lbNext" aria-label="Suivant">›</button>
+    <div class="lb-stage" id="lbStage"></div>
+    <div class="lb-ind" id="lbInd"></div>
+  </div>
+
   <!-- Sheet checkout -->
   <div id="sheet" class="sheet" aria-hidden="true">
     <div class="sheet-card">
@@ -72,38 +125,45 @@
     </div>
   </div>
 
+  <script type="module" src="app.js"></script>
+
+  <!-- Minimal JS to load products, handle cart, open sheet, and send via sendOrder -->
   <script>
     const cart = [];
 
     async function loadProducts() {
-      const res = await fetch("/.netlify/functions/listProducts");
-      const data = await res.json();
-      if (!data.ok) return;
+      try {
+        const res = await fetch("/.netlify/functions/listProducts");
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error?.message || "Erreur liste produits");
 
-      const grid = document.getElementById("grid");
-      grid.innerHTML = data.products.map(p => `
-        <div class="card">
-          <img src="${p.image}" alt="${p.title}" class="card-img" />
-          <div class="card-content">
-            <h3>${p.title}</h3>
-            <p>${p.description}</p>
-            <strong>${p.price}€</strong>
+        const grid = document.getElementById("grid");
+        grid.innerHTML = data.products.map(p => `
+          <div class="card">
+            <img src="${p.image}" alt="${p.title}" class="card-img" />
+            <div class="card-content">
+              <h3>${p.title}</h3>
+              <p>${p.description || ""}</p>
+              <strong>${p.price}€</strong>
+            </div>
+            <button class="btn-add" data-slug="${p.slug}" data-title="${p.title}" data-price="${p.price}">
+              Ajouter
+            </button>
           </div>
-          <button class="btn-add" data-slug="${p.slug}" data-title="${p.title}" data-price="${p.price}">
-            Ajouter
-          </button>
-        </div>
-      `).join("");
+        `).join("");
 
-      document.querySelectorAll(".btn-add").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const slug = btn.dataset.slug;
-          const title = btn.dataset.title;
-          const price = parseFloat(btn.dataset.price);
-          cart.push({ slug, title, price });
-          updateCart();
+        document.querySelectorAll(".btn-add").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const slug = btn.dataset.slug;
+            const title = btn.dataset.title;
+            const price = parseFloat(btn.dataset.price);
+            cart.push({ slug, title, price });
+            updateCart();
+          });
         });
-      });
+      } catch (e) {
+        console.error(e);
+      }
     }
 
     function updateCart() {
@@ -116,17 +176,18 @@
       document.getElementById("cartList").innerHTML = cart.map(p => `<li>${p.title} — ${p.price}€</li>`).join("");
     }
 
+    // Open/close sheet
     document.getElementById("checkoutBtn").addEventListener("click", () => {
       document.getElementById("sheet").setAttribute("aria-hidden", "false");
     });
-
     document.getElementById("sheetClose").addEventListener("click", () => {
       document.getElementById("sheet").setAttribute("aria-hidden", "true");
     });
 
+    // Send via Netlify function sendOrder
     document.getElementById("sendOrder").addEventListener("click", async () => {
-      const tg = window.Telegram.WebApp;
-      const id = tg.initDataUnsafe?.user?.id || null;
+      const tg = window.Telegram?.WebApp;
+      const id = tg?.initDataUnsafe?.user?.id || null;
       const name = document.getElementById("name").value.trim();
       const phone = document.getElementById("phone").value.trim();
       const address = document.getElementById("address").value.trim();
@@ -151,7 +212,7 @@
           updateCart();
           document.getElementById("sheet").setAttribute("aria-hidden", "true");
         } else {
-          document.getElementById("sheetError").textContent = "Erreur: " + data.error.message;
+          document.getElementById("sheetError").textContent = "Erreur: " + (data.error?.message || "Envoi échoué");
         }
       } catch (err) {
         document.getElementById("sheetError").textContent = "Erreur envoi commande : " + err.message;
