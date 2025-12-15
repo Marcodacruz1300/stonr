@@ -1,33 +1,53 @@
 const { Octokit } = require("@octokit/rest");
 
-const OWNER = "Marcodacruz1300";
-const REPO = "stonr";
-const BRANCH = "main";
+const OWNER = "Marcodacruz1300";   // ton compte GitHub
+const REPO = "stonr";              // ton repo
+const BRANCH = "main";             // ta branche
 const PRODUCTS_DIR = "content/produits";
 
 exports.handler = async (event) => {
   try {
-    const { slug } = JSON.parse(event.body || "{}");
+    const body = JSON.parse(event.body || "{}");
+    const { slug } = body;
+
     if (!slug) {
-      const e = new Error("Missing slug");
-      e.name = "ValidationError";
-      throw e;
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ ok: false, error: { name: "ValidationError", message: "slug requis" } })
+      };
     }
 
-    const path = `${PRODUCTS_DIR}/${slug}.md`;
+    const filePath = `${PRODUCTS_DIR}/${slug}.md`;
     const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-    const { data: file } = await octokit.repos.getContent({ owner: OWNER, repo: REPO, path, ref: BRANCH });
 
-    await octokit.repos.deleteFile({
-      owner: OWNER, repo: REPO, path,
-      message: `Delete product ${slug}`, sha: file.sha, branch: BRANCH
+    // Récupérer le sha du fichier à supprimer
+    const { data: file } = await octokit.repos.getContent({
+      owner: OWNER,
+      repo: REPO,
+      path: filePath,
+      ref: BRANCH
     });
 
-    return { statusCode: 200, headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ok: true, message: `Produit supprimé: ${slug}` }) };
+    const sha = file.sha;
+
+    // Supprimer le fichier
+    await octokit.repos.deleteFile({
+      owner: OWNER,
+      repo: REPO,
+      path: filePath,
+      message: `Delete product ${slug}`,
+      branch: BRANCH,
+      sha
+    });
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ ok: true, message: "Produit supprimé", slug })
+    };
   } catch (err) {
-    return { statusCode: err.name === "ValidationError" ? 400 : 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ok: false, error: { name: err.name || "Error", message: err.message } }) };
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ ok: false, error: { name: err.name || "Error", message: err.message } })
+    };
   }
 };
