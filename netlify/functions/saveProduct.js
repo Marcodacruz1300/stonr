@@ -70,7 +70,9 @@ exports.handler = async (event) => {
           sha: oldFile.sha,
           branch: "main"
         });
-      } catch (_) {}
+      } catch (err) {
+        if (err.status !== 404) throw err;
+      }
     }
 
     const frontmatter = toFrontMatter({
@@ -88,7 +90,9 @@ exports.handler = async (event) => {
     try {
       const { data: existing } = await octokit.repos.getContent({ owner: OWNER, repo: REPO, path: mdPath });
       sha = existing.sha;
-    } catch (_) {}
+    } catch (err) {
+      if (err.status !== 404) throw err; // ignore si le fichier n'existe pas
+    }
 
     await octokit.repos.createOrUpdateFileContents({
       owner: OWNER,
