@@ -3,8 +3,16 @@
   "version": "1.0.0",
   "description": "Mini CMS avec Netlify Functions et GitHub API",
   "main": "index.js",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start"
+  },
   "dependencies": {
     "@octokit/rest": "^20.0.0",
-    "formidable": "^3.5.1"
+    "formidable": "^3.5.1",
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
   }
 }

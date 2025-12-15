@@ -1,11 +1,6 @@
 [build]
-  # Commande de build pour Next.js
   command = "npm run build"
-
-  # Dossier généré par Next.js après build
   publish = ".next"
-
-  # Dossier où Netlify va chercher tes Functions
   functions = "netlify/functions"
 
 [functions]
