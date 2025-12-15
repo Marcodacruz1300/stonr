@@ -8,49 +8,8 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    /* Images carrées */
-    .card-img {
-      width: 80px;
-      aspect-ratio: 1 / 1;
-      object-fit: cover;
-      border-radius: 8px;
-      display: block;
-    }
-
-    /* Empêcher bg/scrim de bloquer les clics */
-    .bg, .scrim {
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* Bouton orange toujours au-dessus */
-    .fab {
-      position: fixed;
-      bottom: 16px;
-      left: 16px;
-      right: 16px;
-      z-index: 1000;
-    }
-
-    .card {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: #1c1c1c;
-      border-radius: 12px;
-      padding: 12px;
-    }
-    .card-content {
-      flex: 1;
-    }
-    .card-content h3 {
-      margin: 0 0 4px;
-      color: #fff;
-    }
-    .card-content p {
-      margin: 0 0 6px;
-      color: #ccc;
-    }
+    /* Bouton orange au-dessus du fond */
+    .fab { z-index: 25; }
   </style>
 </head>
 <body>
@@ -123,19 +82,21 @@
       const grid = document.getElementById("grid");
       grid.innerHTML = data.products.map(p => `
         <div class="card">
-          <img src="${p.image}" alt="${p.title}" class="card-img" />
-          <div class="card-content">
-            <h3>${p.title}</h3>
-            <p>${p.description || ""}</p>
-            <strong>${p.price}€</strong>
+          <div class="media">
+            <img src="${p.image}" alt="${p.title}" />
           </div>
-          <button class="btn-add" data-slug="${p.slug}" data-title="${p.title}" data-price="${p.price}">
-            Ajouter
-          </button>
+          <div class="meta">
+            <h3 class="title">${p.title}</h3>
+            <p class="sub">${p.description || ""}</p>
+            <div class="price">${p.price}€</div>
+            <button class="btnAdd" data-slug="${p.slug}" data-title="${p.title}" data-price="${p.price}">
+              Ajouter
+            </button>
+          </div>
         </div>
       `).join("");
 
-      document.querySelectorAll(".btn-add").forEach(btn => {
+      document.querySelectorAll(".btnAdd").forEach(btn => {
         btn.addEventListener("click", () => {
           const slug = btn.dataset.slug;
           const title = btn.dataset.title;
@@ -158,10 +119,10 @@
 
     // Ouvrir/fermer la sheet
     document.getElementById("checkoutBtn").addEventListener("click", () => {
-      document.getElementById("sheet").setAttribute("aria-hidden", "false");
+      document.getElementById("sheet").classList.add("open");
     });
     document.getElementById("sheetClose").addEventListener("click", () => {
-      document.getElementById("sheet").setAttribute("aria-hidden", "true");
+      document.getElementById("sheet").classList.remove("open");
     });
 
     // Envoi commande via sendOrder.js
@@ -196,7 +157,7 @@
           alert("Commande envoyée !");
           cart.length = 0;
           updateCart();
-          document.getElementById("sheet").setAttribute("aria-hidden", "true");
+          document.getElementById("sheet").classList.remove("open");
         } else {
           document.getElementById("sheetError").textContent = "Erreur: " + (data.error?.message || "Envoi échoué");
         }
