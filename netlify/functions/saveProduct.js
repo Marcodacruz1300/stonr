@@ -30,17 +30,12 @@ exports.handler = async (event) => {
 
     const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
-    // Upload image if provided
     let imagePath = image || "";
     if (imageBase64 && imageName) {
       imagePath = `${IMAGES_DIR}/${imageName}`;
       await octokit.repos.createOrUpdateFileContents({
-        owner: OWNER,
-        repo: REPO,
-        path: imagePath,
-        message: `Upload image ${imageName}`,
-        content: imageBase64,
-        branch: BRANCH
+        owner: OWNER, repo: REPO, path: imagePath,
+        message: `Upload image ${imageName}`, content: imageBase64, branch: BRANCH
       });
       imagePath = `/${imagePath}`;
     }
@@ -48,64 +43,39 @@ exports.handler = async (event) => {
     const slug = title.replace(/\s+/g, "-").toLowerCase();
     const mdPath = `${PRODUCTS_DIR}/${slug}.md`;
 
-    // If renaming
     if (originalSlug && originalSlug !== slug) {
       const oldPath = `${PRODUCTS_DIR}/${originalSlug}.md`;
       try {
         const { data: oldFile } = await octokit.repos.getContent({ owner: OWNER, repo: REPO, path: oldPath, ref: BRANCH });
         await octokit.repos.deleteFile({
-          owner: OWNER,
-          repo: REPO,
-          path: oldPath,
+          owner: OWNER, repo: REPO, path: oldPath,
           message: `Rename product ${originalSlug} -> ${slug}`,
-          sha: oldFile.sha,
-          branch: BRANCH
+          sha: oldFile.sha, branch: BRANCH
         });
-      } catch (err) {
-        if (err.status !== 404) throw err;
-      }
+      } catch (err) { if (err.status !== 404) throw err; }
     }
 
     const frontmatter = toFrontMatter({ title, price, description, image: imagePath });
     const contentBase64 = Buffer.from(frontmatter).toString("base64");
 
-    // Try create, if fails then update
     try {
       await octokit.repos.createOrUpdateFileContents({
-        owner: OWNER,
-        repo: REPO,
-        path: mdPath,
-        message: `Add product ${title}`,
-        content: contentBase64,
-        branch: BRANCH
+        owner: OWNER, repo: REPO, path: mdPath,
+        message: `Add product ${title}`, content: contentBase64, branch: BRANCH
       });
     } catch (err) {
       const { data: existing } = await octokit.repos.getContent({ owner: OWNER, repo: REPO, path: mdPath, ref: BRANCH });
       await octokit.repos.createOrUpdateFileContents({
-        owner: OWNER,
-        repo: REPO,
-        path: mdPath,
-        message: `Update product ${title}`,
-        content: contentBase64,
-        branch: BRANCH,
-        sha: existing.sha
+        owner: OWNER, repo: REPO, path: mdPath,
+        message: `Update product ${title}`, content: contentBase64, branch: BRANCH, sha: existing.sha
       });
     }
 
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ok: true,
-        message: `Produit publié: ${title}`,
-        slug
-      })
-    };
+    return { statusCode: 200, headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ok: true, message: `Produit publié: ${title}`, slug }) };
   } catch (err) {
-    return {
-      statusCode: err.name === "ValidationError" ? 400 : 500,
+    return { statusCode: err.name === "ValidationError" ? 400 : 500,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ok: false, error: { name: err.name || "Error", message: err.message } })
-    };
+      body: JSON.stringify({ ok: false, error: { name: err.name || "Error", message: err.message } }) };
   }
 };
