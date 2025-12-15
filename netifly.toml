@@ -1,18 +1,4 @@
-[[headers]]
-  for = "/backoffice"
-  [headers.values]
-    Basic-Auth = "admin 1005"
-
-[[headers]]
-  for = "/backoffice/*"
-  [headers.values]
-    Basic-Auth = "admin 1005"
-
-    [build]
-  publish = "."
-  command = ""
-
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
+[build]
+  functions = "netlify/functions"
+  publish = "public"
 

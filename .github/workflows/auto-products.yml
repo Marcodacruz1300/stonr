@@ -41,8 +41,8 @@ jobs:
           }
 
           const files = walk(DIR);
-          const repo = "Marcodacruz1300/stonr";   // repo fixé ici
-          const branch = "main";                  // branche principale
+          const repo = "Marcodacruz1300/stonr";
+          const branch = "main";
           const urls = files.map(f => `https://raw.githubusercontent.com/${repo}/${branch}/${f}`);
 
           fs.writeFileSync('products.json', JSON.stringify(urls, null, 2));

@@ -12,6 +12,7 @@
   </style>
 </head>
 <body>
+  <!-- Login simple par code -->
   <div id="login">
     <h2>Accès Backoffice</h2>
     <input type="password" id="code" placeholder="Code secret">
@@ -19,23 +20,20 @@
     <p id="error" style="color:red;"></p>
   </div>
 
+  <!-- Formulaire de publication -->
   <div id="cms">
     <h2>Ajouter un produit</h2>
-    <form id="productForm">
-      <input type="text" id="title" placeholder="Titre" required><br>
-      <input type="number" id="price" placeholder="Prix (€)" step="0.01" required><br>
-      <textarea id="description" placeholder="Description"></textarea><br>
-      <input type="file" id="image" accept="image/*" required><br>
+    <form id="productForm" action="/.netlify/functions/addProduct" method="POST" enctype="multipart/form-data">
+      <input type="text" name="title" placeholder="Titre" required><br>
+      <input type="number" name="price" placeholder="Prix (€)" step="0.01" required><br>
+      <textarea name="description" placeholder="Description"></textarea><br>
+      <input type="file" name="image" accept="image/*" required><br>
       <button type="submit">Publier</button>
       <p id="msg"></p>
     </form>
   </div>
 
 <script>
-const GITHUB_TOKEN = "TON_TOKEN_PERSONNEL"; // mets ton token GitHub ici
-const REPO = "Marcodacruz1300/stonr";
-const BRANCH = "main";
-
 function checkCode() {
   const input = document.getElementById("code").value.trim();
   if (input === "BOT2026") {
@@ -44,64 +42,6 @@ function checkCode() {
   } else {
     document.getElementById("error").innerText = "Code incorrect";
   }
-}
-
-document.getElementById("productForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const title = document.getElementById("title").value.trim();
-  const price = document.getElementById("price").value.trim();
-  const description = document.getElementById("description").value.trim();
-  const imageFile = document.getElementById("image").files[0];
-
-  try {
-    // 1. Upload image
-    const imgPath = `assets/uploads/${imageFile.name}`;
-    const imgContent = await toBase64(imageFile);
-    await githubCommit(imgPath, imgContent, `Upload image ${imageFile.name}`);
-
-    // 2. Create product .md
-    const slug = title.replace(/\s+/g, "-").toLowerCase();
-    const mdPath = `content/produits/${slug}.md`;
-    const mdContent = `---
-title: "${title}"
-price: ${price}
-description: "${description}"
-image: "/${imgPath}"
-published: true
----
-`;
-    await githubCommit(mdPath, btoa(mdContent), `Ajout produit ${title}`);
-
-    document.getElementById("msg").innerText = "Produit ajouté avec succès !";
-  } catch (err) {
-    document.getElementById("msg").innerText = "Erreur: " + err.message;
-  }
-});
-
-async function githubCommit(path, content, message) {
-  const url = `https://api.github.com/repos/${REPO}/contents/${path}`;
-  const res = await fetch(url, {
-    method: "PUT",
-    headers: {
-      "Authorization": `token ${GITHUB_TOKEN}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      message,
-      content,
-      branch: BRANCH
-    })
-  });
-  if (!res.ok) throw new Error(await res.text());
-}
-
-function toBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(",")[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 </script>
 </body>
