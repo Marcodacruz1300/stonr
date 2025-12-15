@@ -4,8 +4,8 @@
   "description": "Mini CMS avec Netlify Functions et GitHub API",
   "main": "index.js",
   "scripts": {
-    "build": "next build",
     "dev": "next dev",
+    "build": "next build",
     "start": "next start"
   },
   "dependencies": {
