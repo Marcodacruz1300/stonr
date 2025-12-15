@@ -13,7 +13,10 @@ exports.handler = async (event) => {
 
     const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
     const { data: file } = await octokit.repos.getContent({
-      owner: OWNER, repo: REPO, path, ref: BRANCH
+      owner: OWNER,
+      repo: REPO,
+      path,
+      ref: BRANCH
     });
 
     const content = Buffer.from(file.content, "base64").toString("utf8");
@@ -22,13 +25,19 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ok: true, product: { slug, ...parsed.data } })
+      body: JSON.stringify({
+        ok: true,
+        product: { slug, ...parsed.data }
+      })
     };
   } catch (err) {
     return {
       statusCode: 500,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ok: false, error: { name: err.name, message: err.message } })
+      body: JSON.stringify({
+        ok: false,
+        error: { name: err.name || "Error", message: err.message }
+      })
     };
   }
 };

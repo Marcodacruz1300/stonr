@@ -1,14 +1,14 @@
 {
-  "name": "mini-cms",
+  "name": "stonr",
   "version": "1.0.0",
-  "description": "Mini CMS statique avec Netlify Functions et GitHub API",
+  "description": "Site avec backoffice Netlify",
+  "main": "index.js",
   "scripts": {
-    "build": ""
+    "build": "echo 'Build statique'",
+    "start": "netlify dev"
   },
   "dependencies": {
-    "@octokit/rest": "^20.0.0"
-  },
-  "engines": {
-    "node": ">=18"
+    "@octokit/rest": "^20.0.0",
+    "gray-matter": "^4.0.3"
   }
 }
