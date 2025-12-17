@@ -12,5 +12,12 @@
     "price": "50",
     "description": "6G",
     "image": "/content/images/1766008017398-IMG_0923.jpg"
+  },
+  {
+    "slug": "dry-90u-monster-gas-100€",
+    "title": "Dry 90u monster gas 100€",
+    "price": "100",
+    "description": "12,5G",
+    "image": "/content/images/1766008072490-IMG_0923.jpg"
   }
 ]
