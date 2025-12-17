@@ -1,8 +1,8 @@
 ---
-title: Dry 90u monster gas farm strain cherry pie
-price: '50'
-description: 6G
-image: /content/images/1766007943677-IMG_0923.jpg
+title: Dry 90u monster gas 30€
+price: '30'
+description: '3,5G'
+image: /content/images/1766007976516-IMG_0923.jpg
 published: true
 ---
-6G
+3,5G
