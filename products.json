@@ -33,5 +33,12 @@
     "price": "40",
     "description": "40€",
     "image": "/content/images/1766202372226-IMG_0005.jpeg"
+  },
+  {
+    "slug": "cocaïne-60€",
+    "title": "Cocaïne 60€",
+    "price": "60",
+    "description": "60€",
+    "image": "/content/images/1766202412928-IMG_0005.jpeg"
   }
 ]
