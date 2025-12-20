@@ -19,5 +19,12 @@
     "price": "100",
     "description": "12,5G",
     "image": "/content/images/1766008072490-IMG_0923.jpg"
+  },
+  {
+    "slug": "cocaïne-20€",
+    "title": "Cocaïne 20€",
+    "price": "20",
+    "description": "20€",
+    "image": "/content/images/1766202344429-IMG_0005.jpeg"
   }
 ]
